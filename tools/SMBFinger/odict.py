@@ -1,5 +1,6 @@
 from UserDict import DictMixin
 
+
 class OrderedDict(dict, DictMixin):
 
     def __init__(self, *args, **kwds):
@@ -14,7 +15,7 @@ class OrderedDict(dict, DictMixin):
     def clear(self):
         self.__end = end = []
         end += [None, end, end]
-        self.__map = {} 
+        self.__map = {}
         dict.clear(self)
 
     def __setitem__(self, key, value):
@@ -93,8 +94,8 @@ class OrderedDict(dict, DictMixin):
 
     def __eq__(self, other):
         if isinstance(other, OrderedDict):
-            return len(self)==len(other) and \
-                   min(p==q for p, q in  zip(self.items(), other.items()))
+            return len(self) == len(other) and \
+                min(p == q for p, q in zip(self.items(), other.items()))
         return dict.__eq__(self, other)
 
     def __ne__(self, other):
@@ -102,5 +103,6 @@ class OrderedDict(dict, DictMixin):
 
 
 if __name__ == '__main__':
-    d = OrderedDict([('foo',2),('bar',3),('baz',4),('zot',5),('arrgh',6)])
+    d = OrderedDict([('foo', 2), ('bar', 3), ('baz', 4),
+                     ('zot', 5), ('arrgh', 6)])
     assert [x for x in d] == ['foo', 'bar', 'baz', 'zot', 'arrgh']

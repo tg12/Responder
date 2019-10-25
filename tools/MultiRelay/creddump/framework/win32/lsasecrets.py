@@ -23,7 +23,8 @@ from framework.win32.rawreg import *
 from framework.addrspace import HiveFileAddressSpace
 #from framework.win32.hashdump import get_bootkey,str_to_key
 from Crypto.Hash import MD5
-from Crypto.Cipher import ARC4,DES
+from Crypto.Cipher import ARC4, DES
+
 
 def get_lsa_key(secaddr, bootkey):
     root = get_root(secaddr)
@@ -40,7 +41,7 @@ def get_lsa_key(secaddr, bootkey):
         return None
 
     obf_lsa_key = secaddr.read(enc_reg_value.Data.value,
-            enc_reg_value.DataLength.value)
+                               enc_reg_value.DataLength.value)
     if not obf_lsa_key:
         return None
 
@@ -55,6 +56,7 @@ def get_lsa_key(secaddr, bootkey):
 
     return lsa_key[0x10:0x20]
 
+
 def decrypt_secret(secret, key):
     """Python implementation of SystemFunction005.
 
@@ -62,26 +64,27 @@ def decrypt_secret(secret, key):
     Note that key can be longer than 7 bytes."""
     decrypted_data = ''
     j = 0   # key index
-    for i in range(0,len(secret),8):
-        enc_block = secret[i:i+8]
-        block_key = key[j:j+7]
+    for i in range(0, len(secret), 8):
+        enc_block = secret[i:i + 8]
+        block_key = key[j:j + 7]
         des_key = str_to_key(block_key)
 
         des = DES.new(des_key, DES.MODE_ECB)
         decrypted_data += des.decrypt(enc_block)
-        
+
         j += 7
-        if len(key[j:j+7]) < 7:
-            j = len(key[j:j+7])
+        if len(key[j:j + 7]) < 7:
+            j = len(key[j:j + 7])
 
     (dec_data_len,) = unpack("<L", decrypted_data[:4])
-    return decrypted_data[8:8+dec_data_len]
+    return decrypted_data[8:8 + dec_data_len]
+
 
 def get_secret_by_name(secaddr, name, lsakey):
     root = get_root(secaddr)
     if not root:
         return None
-    
+
     enc_secret_key = open_key(root, ["Policy", "Secrets", name, "CurrVal"])
     if not enc_secret_key:
         return None
@@ -91,11 +94,12 @@ def get_secret_by_name(secaddr, name, lsakey):
         return None
 
     enc_secret = secaddr.read(enc_secret_value.Data.value,
-            enc_secret_value.DataLength.value)
+                              enc_secret_value.DataLength.value)
     if not enc_secret:
         return None
 
     return decrypt_secret(enc_secret[0xC:], lsakey)
+
 
 def get_secrets(Key, secaddr):
     root = get_root(secaddr)
@@ -109,19 +113,19 @@ def get_secrets(Key, secaddr):
     if not secrets_key:
         print "no secret"
         return None
-    
+
     secrets = {}
     for key in subkeys(secrets_key):
         sec_val_key = open_key(key, ["CurrVal"])
         if not sec_val_key:
             continue
-        
+
         enc_secret_value = sec_val_key.ValueList.List[0]
         if not enc_secret_value:
             continue
-        
+
         enc_secret = secaddr.read(enc_secret_value.Data.value,
-                enc_secret_value.DataLength.value)
+                                  enc_secret_value.DataLength.value)
         if not enc_secret:
             continue
 
@@ -130,8 +134,8 @@ def get_secrets(Key, secaddr):
 
     return secrets
 
+
 def get_file_secrets(Key, secfile):
     secaddr = HiveFileAddressSpace(secfile)
 
     return get_secrets(Key, secaddr)
-

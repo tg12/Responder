@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# This file is part of Responder, a network take-over set of tools 
+# This file is part of Responder, a network take-over set of tools
 # created and maintained by Laurent Gaffie.
 # email: laurent.gaffie@gmail.com
 # This program is free software: you can redistribute it and/or modify
@@ -16,27 +16,34 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import sqlite3
 
+
 def DumpHashToFile(outfile, data):
-	with open(outfile,"w") as dump:
-		dump.write(data)
+    with open(outfile, "w") as dump:
+        dump.write(data)
+
 
 def DbConnect():
     cursor = sqlite3.connect("./Responder.db")
     return cursor
 
+
 def GetResponderCompleteNTLMv2Hash(cursor):
-     res = cursor.execute("SELECT fullhash FROM Responder WHERE type LIKE '%v2%' AND UPPER(user) in (SELECT DISTINCT UPPER(user) FROM Responder)")
-     Output = ""
-     for row in res.fetchall():
-         Output += '{0}'.format(row[0])+'\n'
-     return Output
+    res = cursor.execute(
+        "SELECT fullhash FROM Responder WHERE type LIKE '%v2%' AND UPPER(user) in (SELECT DISTINCT UPPER(user) FROM Responder)")
+    Output = ""
+    for row in res.fetchall():
+        Output += '{0}'.format(row[0]) + '\n'
+    return Output
+
 
 def GetResponderCompleteNTLMv1Hash(cursor):
-     res = cursor.execute("SELECT fullhash FROM Responder WHERE type LIKE '%v1%' AND UPPER(user) in (SELECT DISTINCT UPPER(user) FROM Responder)")
-     Output = ""
-     for row in res.fetchall():
-         Output += '{0}'.format(row[0])+'\n'
-     return Output
+    res = cursor.execute(
+        "SELECT fullhash FROM Responder WHERE type LIKE '%v1%' AND UPPER(user) in (SELECT DISTINCT UPPER(user) FROM Responder)")
+    Output = ""
+    for row in res.fetchall():
+        Output += '{0}'.format(row[0]) + '\n'
+    return Output
+
 
 cursor = DbConnect()
 print "Dumping NTLMV2 hashes:"

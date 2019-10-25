@@ -24,9 +24,10 @@ from framework.types import regtypes as types
 from operator import itemgetter
 from struct import unpack
 
+
 def get_ptr_type(structure, member):
     """Return the type a pointer points to.
-       
+
        Arguments:
          structure : the name of the structure from vtypes
          member : a list of members
@@ -43,9 +44,10 @@ def get_ptr_type(structure, member):
     else:
         return types[structure][1][member[0]][1][1]
 
+
 class Obj(object):
     """Base class for all objects.
-       
+
        May return a subclass for certain data types to allow
        for special handling.
     """
@@ -54,13 +56,13 @@ class Obj(object):
         if name in globals():
             # This is a bit of "magic"
             # Could be replaced with a dict mapping type names to types
-            return globals()[name](name,address,space)
+            return globals()[name](name, address, space)
         elif name in builtin_types:
             return Primitive(name, address, space)
         else:
             obj = object.__new__(typ)
             return obj
-    
+
     def __init__(self, name, address, space):
         self.name = name
         self.address = address
@@ -70,7 +72,7 @@ class Obj(object):
         # to show up in values() or members(), even if they do not
         # appear in the vtype definition
         self.extra_members = []
-    
+
     def __getattribute__(self, attr):
         try:
             return object.__getattribute__(self, attr)
@@ -82,9 +84,11 @@ class Obj(object):
 
         try:
             off, tp = get_obj_offset(types, [self.name, attr])
-        except:
-            raise AttributeError("'%s' has no attribute '%s'" % (self.name, attr))
-        
+        except BaseException:
+            raise AttributeError(
+                "'%s' has no attribute '%s'" %
+                (self.name, attr))
+
         if tp == 'array':
             a_len = types[self.name][1][attr][1][1]
             l = []
@@ -92,37 +96,43 @@ class Obj(object):
                 a_off, a_tp = get_obj_offset(types, [self.name, attr, i])
                 if a_tp == 'pointer':
                     ptp = get_ptr_type(self.name, [attr, i])
-                    l.append(Pointer(a_tp, self.address+a_off, self.space, ptp))
+                    l.append(
+                        Pointer(
+                            a_tp,
+                            self.address +
+                            a_off,
+                            self.space,
+                            ptp))
                 else:
-                    l.append(Obj(a_tp, self.address+a_off, self.space))
+                    l.append(Obj(a_tp, self.address + a_off, self.space))
             return l
         elif tp == 'pointer':
             # Can't just return a Obj here, since pointers need to also
             # know what type they point to.
             ptp = get_ptr_type(self.name, [attr])
-            return Pointer(tp, self.address+off, self.space, ptp)
+            return Pointer(tp, self.address + off, self.space, ptp)
         else:
-            return Obj(tp, self.address+off, self.space)
-    
+            return Obj(tp, self.address + off, self.space)
+
     def __div__(self, other):
-        if isinstance(other,tuple) or isinstance(other,list):
+        if isinstance(other, tuple) or isinstance(other, list):
             return Pointer(other[0], self.address, self.space, other[1])
-        elif isinstance(other,str):
+        elif isinstance(other, str):
             return Obj(other, self.address, self.space)
         else:
             raise ValueError("Must provide a type name as string for casting")
-    
+
     def members(self):
         """Return a list of this object's members, sorted by offset."""
 
         # Could also just return the list
-        membs = [ (k, v[0]) for k,v in types[self.name][1].items()]
+        membs = [(k, v[0]) for k, v in types[self.name][1].items()]
         membs.sort(key=itemgetter(1))
-        return map(itemgetter(0),membs) + self.extra_members
+        return map(itemgetter(0), membs) + self.extra_members
 
     def values(self):
         """Return a dictionary of this object's members and their values"""
-        
+
         valdict = {}
         for k in self.members():
             valdict[k] = getattr(self, k)
@@ -130,7 +140,7 @@ class Obj(object):
 
     def bytes(self, length=-1):
         """Get bytes starting at the address of this object.
-        
+
            Arguments:
              length : the number of bytes to read. Default: size of
                 this object.
@@ -147,7 +157,7 @@ class Obj(object):
             return builtin_types[self.name][0]
         else:
             return types[self.name][0]
-    
+
     def __repr__(self):
         return "<%s @%08x>" % (self.name, self.address)
 
@@ -168,9 +178,10 @@ class Obj(object):
     def get_offset(self, member):
         return get_obj_offset(types, [self.name] + member)
 
+
 class Primitive(Obj):
     """Class to represent a primitive data type.
-       
+
        Attributes:
          value : the python primitive value of this type
     """
@@ -180,21 +191,24 @@ class Primitive(Obj):
         return obj
 
     def __init__(self, name, address, space):
-        super(Primitive,self).__init__(name, address, space)
+        super(Primitive, self).__init__(name, address, space)
         length, fmt = builtin_types[name]
-        data = space.read(address,length)
-        if not data: self.value = None
-        else: self.value = unpack(fmt,data)[0]
-    
+        data = space.read(address, length)
+        if not data:
+            self.value = None
+        else:
+            self.value = unpack(fmt, data)[0]
+
     def __repr__(self):
         return repr(self.value)
 
     def members(self):
         return []
 
+
 class Pointer(Obj):
     """Class to represent pointers.
-    
+
        value : the object pointed to
 
        If an attribute is not found in this instance,
@@ -206,28 +220,34 @@ class Pointer(Obj):
         return obj
 
     def __init__(self, name, address, space, ptr_type):
-        super(Pointer,self).__init__(name, address, space)
+        super(Pointer, self).__init__(name, address, space)
         ptr_address = read_value(space, name, address)
         if ptr_type[0] == 'pointer':
-            self.value = Pointer(ptr_type[0], ptr_address, self.space, ptr_type[1])
+            self.value = Pointer(
+                ptr_type[0],
+                ptr_address,
+                self.space,
+                ptr_type[1])
         else:
             self.value = Obj(ptr_type[0], ptr_address, self.space)
-    
+
     def __getattribute__(self, attr):
         # It's still nice to be able to access things through pointers
         # without having to explicitly dereference them, so if we don't
         # find an attribute via our superclass, just dereference the pointer
         # and return the attribute in the pointed-to type.
         try:
-            return super(Pointer,self).__getattribute__(attr)
+            return super(Pointer, self).__getattribute__(attr)
         except AttributeError:
             return getattr(self.value, attr)
-    
+
     def __repr__(self):
-        return "<pointer to [%s @%08x]>" % (self.value.name, self.value.address)
+        return "<pointer to [%s @%08x]>" % (
+            self.value.name, self.value.address)
 
     def members(self):
         return self.value.members()
+
 
 class _UNICODE_STRING(Obj):
     """Class representing a _UNICODE_STRING
@@ -250,6 +270,7 @@ class _UNICODE_STRING(Obj):
         return read_unicode_string(self.space, types, [], self.address)
     Buffer = property(fget=getBuffer)
 
+
 class _CM_KEY_NODE(Obj):
     def __new__(typ, *args, **kwargs):
         obj = object.__new__(typ)
@@ -257,8 +278,9 @@ class _CM_KEY_NODE(Obj):
 
     def getName(self):
         return read_string(self.space, types, ['_CM_KEY_NODE', 'Name'],
-            self.address, self.NameLength.value)
+                           self.address, self.NameLength.value)
     Name = property(fget=getName)
+
 
 class _CM_KEY_VALUE(Obj):
     def __new__(typ, *args, **kwargs):
@@ -267,8 +289,9 @@ class _CM_KEY_VALUE(Obj):
 
     def getName(self):
         return read_string(self.space, types, ['_CM_KEY_VALUE', 'Name'],
-            self.address, self.NameLength.value)
+                           self.address, self.NameLength.value)
     Name = property(fget=getName)
+
 
 class _CHILD_LIST(Obj):
     def __new__(typ, *args, **kwargs):
@@ -278,12 +301,13 @@ class _CHILD_LIST(Obj):
     def getList(self):
         lst = []
         list_address = read_obj(self.space, types,
-            ['_CHILD_LIST', 'List'], self.address)
+                                ['_CHILD_LIST', 'List'], self.address)
         for i in range(self.Count.value):
-            lst.append(Pointer("pointer", list_address+(i*4), self.space,
-                ["_CM_KEY_VALUE"]))
+            lst.append(Pointer("pointer", list_address + (i * 4), self.space,
+                               ["_CM_KEY_VALUE"]))
         return lst
     List = property(fget=getList)
+
 
 class _CM_KEY_INDEX(Obj):
     def __new__(typ, *args, **kwargs):
@@ -294,8 +318,8 @@ class _CM_KEY_INDEX(Obj):
         lst = []
         for i in range(self.Count.value):
             # we are ignoring the hash value here
-            off,tp = get_obj_offset(types, ['_CM_KEY_INDEX', 'List', i*2])
-            lst.append(Pointer("pointer", self.address+off, self.space,
-                ["_CM_KEY_NODE"]))
+            off, tp = get_obj_offset(types, ['_CM_KEY_INDEX', 'List', i * 2])
+            lst.append(Pointer("pointer", self.address + off, self.space,
+                               ["_CM_KEY_NODE"]))
         return lst
     List = property(fget=getList)

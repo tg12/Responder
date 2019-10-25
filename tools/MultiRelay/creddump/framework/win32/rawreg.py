@@ -19,21 +19,23 @@
 @contact:      bdolangavitt@wesleyan.edu
 """
 
-from framework.newobj import Obj,Pointer
+from framework.newobj import Obj, Pointer
 from struct import unpack
 
 ROOT_INDEX = 0x20
-LH_SIG = unpack("<H","lh")[0]
-LF_SIG = unpack("<H","lf")[0]
-RI_SIG = unpack("<H","ri")[0]
+LH_SIG = unpack("<H", "lh")[0]
+LF_SIG = unpack("<H", "lf")[0]
+RI_SIG = unpack("<H", "ri")[0]
+
 
 def get_root(address_space):
     return Obj("_CM_KEY_NODE", ROOT_INDEX, address_space)
 
+
 def open_key(root, key):
     if key == []:
         return root
-    
+
     keyname = key.pop(0)
     for s in subkeys(root):
         if s.Name.upper() == keyname.upper():
@@ -41,10 +43,13 @@ def open_key(root, key):
     print "ERR: Couldn't find subkey %s of %s" % (keyname, root.Name)
     return None
 
-def subkeys(key,stable=True):
-    if stable: k = 0
-    else: k = 1
-    sk = (key.SubKeyLists[k]/["pointer", ["_CM_KEY_INDEX"]]).value
+
+def subkeys(key, stable=True):
+    if stable:
+        k = 0
+    else:
+        k = 1
+    sk = (key.SubKeyLists[k] / ["pointer", ["_CM_KEY_INDEX"]]).value
     sub_list = []
     if (sk.Signature.value == LH_SIG or
             sk.Signature.value == LF_SIG):
@@ -52,9 +57,9 @@ def subkeys(key,stable=True):
     elif sk.Signature.value == RI_SIG:
         lfs = []
         for i in range(sk.Count.value):
-            off,tp = sk.get_offset(['List', i])
-            lfs.append(Pointer("pointer", sk.address+off, sk.space,
-                ["_CM_KEY_INDEX"]))
+            off, tp = sk.get_offset(['List', i])
+            lfs.append(Pointer("pointer", sk.address + off, sk.space,
+                               ["_CM_KEY_INDEX"]))
         for lf in lfs:
             sub_list += lf.List
 
@@ -62,9 +67,11 @@ def subkeys(key,stable=True):
         if s.is_valid() and s.Signature.value == 27502:
             yield s.value
 
+
 def values(key):
     for v in key.ValueList.List:
         yield v.value
+
 
 def walk(root):
     for k in subkeys(root):

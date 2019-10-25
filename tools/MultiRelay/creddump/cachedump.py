@@ -30,4 +30,3 @@ if len(sys.argv) < 3:
     sys.exit(1)
 
 dump_file_hashes(sys.argv[1].decode("hex"), sys.argv[2])
-
